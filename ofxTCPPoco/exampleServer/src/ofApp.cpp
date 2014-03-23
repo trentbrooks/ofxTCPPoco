@@ -1,15 +1,16 @@
 #include "ofApp.h"
 
 
+/*
+ ofxTCPPocoServer server example.
+ - server receives a request or ping
+ - server sends back a reply or ack
+ */
 //--------------------------------------------------------------
 void ofApp::setup(){
 
     //ofSetVerticalSync(true);
     ofSetFrameRate(60);
-    
-    // test sending an image buffer when pressing 'i'
-    //image.loadImage("test.png");
-    //ofSaveImage(image.getPixelsRef(), imageBuffer, OF_IMAGE_FORMAT_JPEG, OF_IMAGE_QUALITY_MEDIUM);
     
     // server
     int port = 12345;
@@ -22,20 +23,33 @@ void ofApp::update(){
     // check server for incoming messages from all clients
     for(int i = 0; i < server.getNumClients(); i++) {
         
-        if(server.hasWaitingMessage(i)) {
-            string msg;
-            server.getMessage(i, msg);
-            receivedMessages.push_back(msg);
+        // set a receive size per client connection before checking for requests, so know what buffer size needs to be filled for a request
+        //server.setReceiveSize(i, TCPPOCO_DEFAULT_MSG_SIZE);
+        if(server.hasWaitingRequest(i)) {
+            
+            string message;
+            bool receivedRequest = server.receiveMessage(i, message);
+            if(receivedRequest) {
+                
+                // once request is received, do something with it then respond with a reply or ack
+                receivedMessages.push_back(message);
+                
+                string replyMessage = "Thanks, server received:" + ofToString(message.size()) + " bytes";
+                bool sentReply = server.sendMessage(i, replyMessage);
+                if(sentReply) {
+                    sentMessages.push_back(replyMessage);
+                }
+            } else {
+                ofLog() << "failed to receive";
+            }
+            
         }
     }
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-    
-    // draw the image we want to send
-    //ofSetColor(255);
-    //image.draw(ofGetWidth()*.5, ofGetHeight()*.5, 320, 240);
+
 
     ofPushMatrix();
     ofPushStyle();
@@ -47,23 +61,25 @@ void ofApp::draw(){
     ofPopMatrix();
     
     
-    // display sent messages
-    stringstream sendOutput;
-    sendOutput << "SENT MESSAGES..." << endl;
-    for(int i = sentMessages.size()-1; i >= 0; i--) {
-        sendOutput << sentMessages[i] << endl;
-    }
-    ofSetColor(0);
-    ofDrawBitmapString(sendOutput.str(), 20, 80);
-    
-    // display received messages
+    // display received messages/requests
     stringstream receiveOutput;
     receiveOutput << "RECEIVED MESSAGES..." << endl;
     for(int i = receivedMessages.size()-1; i >= 0; i--) {
         receiveOutput << receivedMessages[i] << endl;
     }
     ofSetColor(0);
-    ofDrawBitmapString(receiveOutput.str(), ofGetWidth()*.5, 80);
+    ofDrawBitmapString(receiveOutput.str(), 20, 80);
+    
+    // display sent messages/replies
+    stringstream sendOutput;
+    sendOutput << "SENT MESSAGES..." << endl;
+    for(int i = sentMessages.size()-1; i >= 0; i--) {
+        sendOutput << sentMessages[i] << endl;
+    }
+    ofSetColor(0);
+    ofDrawBitmapString(sendOutput.str(), ofGetWidth()*.5, 80);
+    
+    
     
     
     
@@ -78,25 +94,6 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
-
-    // send a message from server...
-    for(int i = 0; i < server.getNumClients(); i++) {
-        
-        /*
-        // send image buffer
-        // to send a buffer- send a header message with the size, followed by the image.
-        // then the receiver can change it's receive size
-        server.sendMessage(i, ofToString(imageBuffer.size()));
-        server.sendRawBuffer(i, imageBuffer);
-        sentMessages.push_back("Just sent image bytes: " + ofToString(imageBuffer.size()));
-         */
-        
-        // send string message
-        string message = "Hello from server pressed: " + ofToString(key);
-        server.sendMessage(i, message);
-        sentMessages.push_back(message);
-        
-    }
     
 }
 

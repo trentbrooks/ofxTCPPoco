@@ -16,6 +16,8 @@
 /*
  ofxTCPPocoUtils.
  - util functions for poco tcp server and client
+ - send a string (in specific format) or char* buffer
+ - receive a string (in specific format) or char* buffer
  */
 
 
@@ -28,8 +30,13 @@
 class ofxTCPPocoUtils  {
 public:
     
-    //ofxTCPPocoUtils() {};
-    //virtual ~ofxTCPPocoUtils() {};
+    // receiver helpers
+    static bool receivePaddedMessage(Poco::Net::StreamSocket* clientSocket, string& message, int receiveSize);
+    static bool receiveRawBytes(Poco::Net::StreamSocket* clientSocket, char* buffer, int receiveSize);
+    
+    // sender helpers
+    static bool sendRawBytes(Poco::Net::StreamSocket* socket, char* buffer, int sendSize);
+    static bool sendPaddedMessage(Poco::Net::StreamSocket* socket, string& message, int fillSize);
     
     
     // parse incoming request buffer and get header string
@@ -44,24 +51,14 @@ public:
     // delimiter splits the message- left side is the data, right side is junk
     // eg. "ping xxxxxxxxjunkxxxxxxxx"
     // TODO: maybe have a temp buffer to store the extra bytes on the receiver instead of discarding?
-    static string buildMessage(string& output, int fillSize);
+    static string buildPaddedMessage(string& output, int fillSize);
     
     
-    // construct outgoing request
+    // about padded messages
     // buffer is padded to the required size (with junk)
-    // delimiter " " splits the message- left side is the data, right side is junk
+    // delimiter "|" splits the message- left side is the data, right side is junk
     // or have a temp buffer to store the extra bytes on the receiver? todo...
-    // eg. "ping xxxxxxxxjunkxxxxxxxx"
-    static bool sendRawString(Poco::Net::StreamSocket* clientSocket, string& message, int fillSize=TCPPOCO_DEFAULT_MSG_SIZE);
-    
-    static bool sendRawBuffer(Poco::Net::StreamSocket* clientSocket, char* buffer, int sendSize);
-    
-    
-    // helper method when receiving a buffer for client- ensures whole buffer is full
-    static bool receiveRawString(Poco::Net::StreamSocket* clientSocket, string& message, int receiveSize=TCPPOCO_DEFAULT_MSG_SIZE);
-    
-    // helper method when receiving a buffer for client- ensures whole buffer is full
-    static bool receiveRawBuffer(Poco::Net::StreamSocket* clientSocket, char* buffer, int receiveSize);
+    // eg. "ping|xxxxxxxxjunkxxxxxxxx"
 
 };
 

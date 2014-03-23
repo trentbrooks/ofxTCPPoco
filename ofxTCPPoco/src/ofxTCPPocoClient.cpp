@@ -10,8 +10,6 @@ ofxTCPPocoClient::ofxTCPPocoClient() {
     //setSendTimeout(1);
     setPollTimeout(TCPPOCO_POLL_TIME);
     //sleepTime = 16;
-    waitingMessage = false;
-    
 }
 
 ofxTCPPocoClient::~ofxTCPPocoClient() {
@@ -45,11 +43,12 @@ void ofxTCPPocoClient::setup(string ipAddr, int port) {
 
 // send
 //--------------------------------------------------------------
-void ofxTCPPocoClient::sendMessage(string msg) {
+bool ofxTCPPocoClient::sendMessage(string& msg, int fillSize) {
     
     if(connected) {
-        bool result = ofxTCPPocoUtils::sendRawString(socketStream, msg, TCPPOCO_DEFAULT_MSG_SIZE);
+        return ofxTCPPocoUtils::sendPaddedMessage(socketStream, msg, fillSize); // blocking
     }
+    return false;
 }
 
 void ofxTCPPocoClient::sendRawBuffer(ofBuffer& buffer) {
@@ -59,7 +58,8 @@ void ofxTCPPocoClient::sendRawBuffer(ofBuffer& buffer) {
 void ofxTCPPocoClient::sendRawBuffer(char* buffer, int sendSize) {
     
     if(connected) {
-        bool result = ofxTCPPocoUtils::sendRawBuffer(socketStream, buffer, sendSize);
+        //bool result = ofxTCPPocoUtils::sendRawBuffer(socketStream, buffer, sendSize);
+        bool result = ofxTCPPocoUtils::sendRawBytes(socketStream, buffer, sendSize); // blocking
     }
 }
 
@@ -83,48 +83,45 @@ void ofxTCPPocoClient::sendRawBuffer(char* buffer, int sendSize) {
 
 }*/
 
-// receive
+// receive / replys
 //--------------------------------------------------------------
-bool ofxTCPPocoClient::hasWaitingMessage() {
+// TODO: add polling instead of while loop, or figure out a better threading solution
+bool ofxTCPPocoClient::receiveMessage(string& msg, int receiveSize) {
     
-    /*Poco::ScopedLock<ofMutex> lock(mutex);
-    ofLog() << "2. " << socketStream->available();
-    if(socketStream->available()) {*/
-    waitingMessage = (socketStream->available() > 0) ? true : false;
-    return waitingMessage;
-}
-
-void ofxTCPPocoClient::receiveMessage(string& msg) {
-    
-    // if (socket().poll(timeOut,Poco::Net::Socket::SELECT_READ)){
+    //if (socketStream().poll(timeOut,Poco::Net::Socket::SELECT_READ)){
     if(connected) {
-        bool success = ofxTCPPocoUtils::receiveRawString(socketStream, msg, TCPPOCO_DEFAULT_MSG_SIZE);
-        waitingMessage = false;
+        
+        // blocking
+        while (socketStream->available() < receiveSize) {
+            // poll / waiting until received enough bytes
+        }
+        
+        // also blocking
+        return ofxTCPPocoUtils::receivePaddedMessage(socketStream, msg, receiveSize);
     }
+    return false;
 }
 
-void ofxTCPPocoClient::receiveRawBuffer(ofBuffer& buffer) {
+bool ofxTCPPocoClient::receiveRawBuffer(ofBuffer& buffer, int receiveSize) {
     
     // make sure ofBuffer is allocated to correct receive size + 1!
-    receiveRawBuffer(buffer.getBinaryBuffer(), buffer.size());
-}
-
-void ofxTCPPocoClient::receiveRawBuffer(char* buffer, int receiveSize) {
-    
     if(connected) {
-        bool success = ofxTCPPocoUtils::receiveRawBuffer(socketStream, buffer, receiveSize);
-        waitingMessage = false;
+        
+        // blocking
+        while (socketStream->available() < receiveSize) {
+            // poll / waiting until received enough bytes
+        }
+        
+        buffer.allocate(receiveSize+1);
+        return ofxTCPPocoUtils::receiveRawBytes(socketStream, buffer.getBinaryBuffer(), receiveSize);
     }
+    
+    return false;
 }
 
-//--------------------------------------------------------------
-void ofxTCPPocoClient::update() {
-    
-}
 
-void ofxTCPPocoClient::draw() {
-    
-}
+
+
 
 
 //--------------------------------------------------------------

@@ -27,9 +27,5 @@ class ofApp : public ofBaseApp{
         vector<string> sentMessages;
         vector<string> receivedMessages;
     
-        // test sending an image
-        ofBuffer imageBuffer;
-        ofImage image;
-    
 		
 };

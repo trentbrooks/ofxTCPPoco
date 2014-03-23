@@ -2,6 +2,8 @@
 #include "ofxTCPPocoUtils.h"
 
 
+// message parsing, padding with delim
+//--------------------------------------------------------------
 string ofxTCPPocoUtils::parseMessage(ofBuffer& input) {
     
     stringstream ss;
@@ -17,11 +19,11 @@ string ofxTCPPocoUtils::parseMessage(ofBuffer& input, char delim) {
     stringstream ss;
     ss << input; // input buffer inserted into stringstream
     string output;
-    getline(ss, output, delim);
+    getline(ss, output, delim); // only want the message up until '|' delimiter
     return output;
 }
 
-string ofxTCPPocoUtils::buildMessage(string& output, int fillSize) {
+string ofxTCPPocoUtils::buildPaddedMessage(string& output, int fillSize) {
     
     stringstream ss;
     ss << output << TCPPOCO_DELIMITER; // must have the '|' on the end for stringstream delimeter
@@ -30,48 +32,14 @@ string ofxTCPPocoUtils::buildMessage(string& output, int fillSize) {
     return buffer;
 }
 
-bool ofxTCPPocoUtils::sendRawString(Poco::Net::StreamSocket* clientSocket, string& message, int fillSize) {
-    
-    // pad the message string to required fill size, client must use the same size for receiving.
-    string buffer = ofxTCPPocoUtils::buildMessage(message, fillSize);
-    
-    // add to queue or send directly?
-    // need to send all the bytes
-    int bytesSent = clientSocket->sendBytes(buffer.data(), buffer.size());
-    bool success = (bytesSent == fillSize);
-    
-    // if buffer sent is very large, then it says sent- but the receiver has not got everything yet?
-    
-    // need to add polling?
-    // once message is sent - get a reply back from server. eg "1"
-    //char replyMessage[2]; // allow extra byte for null terminated string
-    //int replyBytes = clientSocket->receiveBytes(replyMessage, 2);
-    //ofLog() << "Client received reply: " << replyMessage << ", " << replyBytes;
-    //bool success = (replyBytes > 0);
-    
-    return success;
-}
 
-bool ofxTCPPocoUtils::sendRawBuffer(Poco::Net::StreamSocket* clientSocket, char* buffer, int sendSize) {
-    
-    // add to queue or send directly?
-    int bytesSent = clientSocket->sendBytes(buffer, sendSize);
-    bool success = (bytesSent == sendSize);
-    
-    // once message is sent - get a reply back from server. eg "1"
-    //char replyMessage[2]; // allow extra byte for null terminated string
-    //int replyBytes = clientSocket->receiveBytes(replyMessage, 2);
-    //ofLog() << "Client received reply: " << replyMessage << ", " << replyBytes;
-    //bool success = (replyBytes > 0);
-    
-    return success;
-}
-
-bool ofxTCPPocoUtils::receiveRawString(Poco::Net::StreamSocket* clientSocket, string& message, int receiveSize) {
+// receiving helpers
+//--------------------------------------------------------------
+bool ofxTCPPocoUtils::receivePaddedMessage(Poco::Net::StreamSocket* socket, string& message, int receiveSize) {
     
     ofBuffer receiveBuffer;
     receiveBuffer.allocate(receiveSize + 1);
-    bool received = ofxTCPPocoUtils::receiveRawBuffer(clientSocket, receiveBuffer.getBinaryBuffer(), receiveBuffer.size());
+    bool received = ofxTCPPocoUtils::receiveRawBytes(socket, receiveBuffer.getBinaryBuffer(), receiveBuffer.size());
     if(received) {
         // parse message / header
         message = ofxTCPPocoUtils::parseMessage(receiveBuffer, TCPPOCO_DELIMITER);
@@ -80,31 +48,81 @@ bool ofxTCPPocoUtils::receiveRawString(Poco::Net::StreamSocket* clientSocket, st
     return false;
 }
 
-bool ofxTCPPocoUtils::receiveRawBuffer(Poco::Net::StreamSocket* clientSocket, char* buffer, int receiveSize) {
+bool ofxTCPPocoUtils::receiveRawBytes(Poco::Net::StreamSocket* socket, char* buffer, int receiveSize) {
     
-    // receiveSize must be > 0
-    //buffer.allocate(receiveSize+1); // don't know why i have to add an extra byte to ofBuffer
-    
-    // while loop to get all data for client
-    int dataReceived = 0;
-    while(dataReceived < receiveSize) {
-        
-        try {
-            int result = clientSocket->receiveBytes(&buffer[dataReceived], receiveSize-dataReceived);
-            if(result > 0) {
-                dataReceived += result;
-            } else {
-                ofLogVerbose() << "Error receiving raw bytes client. Bytes:" << dataReceived; // 0
-                return false;
-            }
-        } catch (Poco::Exception& exc) {
-            //Handle your network errors.
-            ofLog() << "ofxTCPPocoUtils receiveRawBuffer error: " << exc.displayText();
-            return false;
+    try {
+        // send all the bytes
+        int bytesReceived = 0;
+        while (bytesReceived < receiveSize) {
+            
+            // when receiving socket exits- can crash during sendBytes. this keeps socket alive till at least after while loop.
+            // then gets caught in exception error
+            socket->setKeepAlive(true);
+            
+            // receive all the bytes
+            int result = socket->receiveBytes(&buffer[bytesReceived], receiveSize-bytesReceived);
+            //if(result == 0) return false; // not sure about this, not handling this case yet.
+            bytesReceived += result;
         }
+        
+        return true;
+        
+    } catch (Poco::Exception& exc) {
+        
+        ofLog() << "ofxTCPPocoUtils receiveRawBuffer error: " << exc.displayText();
+        return false;
     }
     
     return true;
 }
 
 
+
+// sending helpers
+//--------------------------------------------------------------
+bool ofxTCPPocoUtils::sendPaddedMessage(Poco::Net::StreamSocket* socket, string& message, int fillSize) {
+    
+    // pad the message string to required fill size, receiving socket must use the same size when receiving bytes.
+    string paddedMessage = ofxTCPPocoUtils::buildPaddedMessage(message, fillSize);
+    ofBuffer sendBuffer(paddedMessage);
+    
+    bool success = sendRawBytes(socket, sendBuffer.getBinaryBuffer(), fillSize);
+    return success;
+}
+
+bool ofxTCPPocoUtils::sendRawBytes(Poco::Net::StreamSocket* socket, char* buffer, int sendSize) {
+    
+    // still problems with abrupt disconnection of client during server send
+    //int result = socket->sendBytes(&buffer[0], sendSize);
+    //if(result == sendSize) return true;
+    //return false;
+    
+    try {
+        // send all the bytes
+        int bytesSent = 0;
+        while (bytesSent < sendSize) {
+            
+            // when receiving socket exits- can crash during sendBytes. this keeps socket alive till at least after while loop.
+            // then gets caught in exception error
+            //ofLog() << socket->getKeepAlive() << ", " << bytesSent << " / " << sendSize;
+            socket->setKeepAlive(true);
+            
+            // send all the bytes
+            // getting a crash here on thread 2 when server is sending data
+            int result = socket->sendBytes(&buffer[bytesSent], sendSize - bytesSent);
+            //ofLog() << result << " / " << sendSize;
+            //if(result == 0) return false; // not sure about this, not handling this case yet.
+            bytesSent += result;
+        }
+        
+        return true;
+        
+    } catch (Poco::Exception& exc) {
+        
+        //cout << exc.displayText() << endl;
+        ofLog() << "ofxTCPPocoUtils sendRawBuffer error: " << exc.displayText();
+        return false;
+    }
+    
+    return false;
+}

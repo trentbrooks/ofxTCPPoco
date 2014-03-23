@@ -10,6 +10,7 @@
 #include "ofxTCPPocoUtils.h"
 #include "ofxTCPPocoConnectionFactory.h"
 
+// TODO: crash on client exit
 
 class ofxTCPPocoServer {
 public:
@@ -19,35 +20,27 @@ public:
     
     void setup(int port = 12345);
 
+    // receive requests from clients
+    bool hasWaitingRequest(int clientId);
+    void setReceiveSize(int clientId, int size);
+    bool receiveMessage(int clientId, string& msg);
+    bool receiveRawBuffer(int clientId, ofBuffer& buffer);
+    
+    // send
+    bool sendMessage(int clientId, string msg);
+    bool sendRawBuffer(int clientId, ofBuffer& buffer);
+    
+    
     // server automatically pulls data from clients with ofxTCPPocoConnectionHandler run loop
     // no need to thread
     int getNumClients();
-    bool hasWaitingMessage(int clientId);
-    void getMessage(int clientId, string& msg);
-    void getRawBuffer(int clientId, ofBuffer& buffer);
-    void getRawBuffer(int clientId, char* buffer, int& size);
     
-    // send
-    void sendMessage(int clientId, string msg);
-    void sendRawBuffer(int clientId, ofBuffer& buffer);
-    void sendRawBuffer(int clientId, char* buffer, int sendSize);
+    //bool hasWaitingMessage(int clientId);
+    //void getMessage(int clientId, string& msg);
+    //void getRawBuffer(int clientId, ofBuffer& buffer);
     
-    
-    
-    void draw();
     void printServerInfo();
-    
-    //void setBufferSize(int size);
-    
-    // send/receive
-    //void receiveRawBuffer(ofBuffer& buffer);
-    //void receiveRawBuffer(char* buffer, int size);
-    
-    // events/callbacks
-    //void onDataCallback(ofBuffer& data);
-    //void onDataCallback2(ofBuffer data);
-    //void onConnectionEstablished(ofEventArgs& args);
-    
+
     
 protected:
     
@@ -57,5 +50,7 @@ protected:
     Poco::Net::ServerSocket* serverSocket;
     Poco::Net::TCPServer* server;
     ofxTCPPocoConnectionFactory* connection;
+    
+    bool waitingRequest; // temp var applied to any connection
 
 };

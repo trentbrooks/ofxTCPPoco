@@ -1,5 +1,10 @@
 #include "ofApp.h"
 
+/*
+ ofxTCPPocoClient client example.
+ - client sends a request or ping
+ - receives a reply or ack
+ */
 
 //--------------------------------------------------------------
 void ofApp::setup(){
@@ -15,25 +20,6 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 void ofApp::update(){
 
-    if(client.hasWaitingMessage()) {
-        string msg;
-        client.receiveMessage(msg);
-        receivedMessages.push_back(msg);
-        ofLog() << "client received: " << msg;
-        
-        /*
-        // for this test, we receive a header which has the size of the incoming image buffer for the next message 
-        string headerMessage;
-        client.receiveMessage(headerMessage);
-        receivedMessages.push_back(headerMessage);
-        
-        // we know the next image is the image buffer
-        ofBuffer receiveBuffer;
-        receiveBuffer.allocate(ofToInt(headerMessage)+1);
-        client.receiveRawBuffer(receiveBuffer);
-        ofLoadImage(image, receiveBuffer);
-         */
-    }
 
 }
 
@@ -41,8 +27,7 @@ void ofApp::update(){
 void ofApp::draw(){
 
     // draw the image we received
-    //ofSetColor(255);
-    //if(image.isAllocated()) image.draw(ofGetWidth()*.5, ofGetHeight()*.5, 320, 240);
+    ofSetColor(255);
     
     ofPushMatrix();
     ofPushStyle();
@@ -82,11 +67,26 @@ void ofApp::draw(){
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
 
-    // send a message from client...
+    // send message
     string message = "Hello from client pressed:" + ofToString(key);
-    client.sendMessage(message);
-    sentMessages.push_back(message);
+    bool sentRequest = client.sendMessage(message);
     
+    if(sentRequest) {
+        sentMessages.push_back(message);
+        
+        // once a message is sent, read the reply from server (blocking)
+        string replyMessage;
+        bool receivedReply = client.receiveMessage(replyMessage, TCPPOCO_DEFAULT_MSG_SIZE); // blocking/waiting
+        if(receivedReply) {
+            receivedMessages.push_back( replyMessage);
+        } else {
+            ofLog() << "failed to receive reply";
+        }
+        
+    } else {
+        
+        ofLog() << "failed to send request";
+    }
 }
 
 //--------------------------------------------------------------

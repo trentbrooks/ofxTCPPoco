@@ -7,123 +7,233 @@ ofxTCPPocoConnectionHandler::ofxTCPPocoConnectionHandler(const Poco::Net::Stream
     
     defaultMessageSize = TCPPOCO_DEFAULT_MSG_SIZE; // smaller message size initially
     receiveBufferSize = defaultMessageSize;
-    waitingMessage = false;
-    waitingSend = false;
+    waitingMessage = false; // only receive/process messages one at a time
+    //messagesToSend = false;
     clientId = -1;
+    //sleepTime = 16;
+    
+    
 }
 
 ofxTCPPocoConnectionHandler::~ofxTCPPocoConnectionHandler() {
+    ofLog() << "*** connection deleted!";
 }
 
 
+
+// for reading messages...
+//--------------------------------------------------------------
 bool ofxTCPPocoConnectionHandler::hasWaitingMessage() {
     
-    Poco::ScopedRWLock lock(mutex);
+    Poco::ScopedLock<ofMutex> lock(mutex);
     return waitingMessage;
 }
 
+// assumes hasWaitingMessage() was called, and their is a message buffer in the queue
+void ofxTCPPocoConnectionHandler::getRawBuffer(ofBuffer& buffer) {
+    
+    mutex.lock();
+    buffer = receiveBuffer;
+    waitingMessage = true;
+//    buffer = receivedBuffers.front();
+//    receivedBuffers.pop();
+//    if(receivedBuffers.size() == 0) {
+//        waitingMessage = false;
+//    }
+    mutex.unlock();
+}
+
+void ofxTCPPocoConnectionHandler::flush() {
+    
+    mutex.lock();
+    receiveBuffer.clear();
+    //receivedBuffers.empty();
+    waitingMessage = false;
+    mutex.unlock();
+}
+
+// atm the receive buffer size for the server is only small (TCPPOCO_DEFAULT_MSG_SIZE)
+// if receiving a large buffer, eg. image, this needs to be set from the server.
+// TODO: this needs to be set per message if don't know size of incoming message
 void ofxTCPPocoConnectionHandler::setReceiveBufferSize(int size) {
     
-    ofLog() << "Setting new buffer size for server connections " << size;
-    // this doesn't work because if the dumb receivebytes waiting when already allocated... shithouse!!!
-    mutex.writeLock();
+    //ofLog() << "Setting new buffer size for server connections " << size;
+    mutex.lock();
     receiveBufferSize = size;
     mutex.unlock();
 }
 
 
-void ofxTCPPocoConnectionHandler::setSendBuffer(ofBuffer& buffer) {
+// for writing messages...
+//--------------------------------------------------------------
+// blocking message sending
+bool ofxTCPPocoConnectionHandler::sendRawBuffer(ofBuffer& buffer) {
     
+    bool sent = false;
+    mutex.lock();
     
-    /*mutex.writeLock();
-    sendBuffer = buffer; // a reference
-    waitingSend = true;
-    ofLog() << "Ready to send a buffer " << buffer.size();
-    mutex.unlock();*/
+    //Poco::Timespan timeOut(0,100000);
+    //socket().setSendTimeout(timeOut);
+    sent = ofxTCPPocoUtils::sendRawBytes(&socket(), buffer.getBinaryBuffer(), buffer.size());
+    if(!sent) {
+        //ofLog() << "send fail???";
+        // problem with connection- check error message log
+        socket().setKeepAlive(false);
+        ofNotifyEvent(closeEvent, clientId, this);
+        
+    }
     
-    sendBuffer = buffer; // a reference
-    int bytesSent = socket().sendBytes(sendBuffer.getBinaryBuffer(), sendBuffer.size());
+    mutex.unlock();
+    return sent;
 }
 
-// best to process all the data in the run before calling the callback.
-// setup to receive messages 1 at a time
+
+/*void ofxTCPPocoConnectionHandler::queueRawBuffer(ofBuffer& buffer) {
+    
+    mutex.lock();
+    sendBuffers.push(buffer);
+    messagesToSend = true;
+    mutex.unlock();
+}
+
+// same as getRawBuffer(), but for internal use by the sender thread
+// gets next buffer from queue
+void ofxTCPPocoConnectionHandler::getQueuedBuffer(ofBuffer& buffer) {
+    
+    mutex.lock();
+    buffer = sendBuffers.front();
+    sendBuffers.pop();
+    if(sendBuffers.size() == 0) {
+        messagesToSend = false;
+    }
+    mutex.unlock();
+}*/
+
+
+
+// thread loop
+//--------------------------------------------------------------
 void ofxTCPPocoConnectionHandler::run() {
     
     bool isOpen = true;
-    Poco::Timespan timeOut(TCPPOCO_POLL_TIME,0); // polling timeout - how often to read
+    //Poco::Timespan timeOut(TCPPOCO_POLL_TIME,0); // polling timeout - how often to read
+    
     while(isOpen) {
+        
+        //int startTime = ofGetElapsedTimeMillis();
+        // read messages when data is available (or a blocking alternative- socket().poll(timeOut,Poco::Net::Socket::SELECT_READ)
+        //if(socket().available()) {
+        //ofLog() << "...";
+        // this needs to change- currently dont know how many bytes i will receive
+        int bytesAvailable = socket().available();
+        //ofLog() << bytesAvailable << " : " << ofGetFrameNum();
+        //while(socket().available()) {
+        if(bytesAvailable >= receiveBufferSize) {
 
-        // this is a read poll...
-        if (socket().poll(timeOut,Poco::Net::Socket::SELECT_READ)){
-            
-            mutex.readLock();
-            int nextBufferSize = receiveBufferSize;
-            bool nextWaitingMessage = waitingMessage;
-            /*bool nextWaitingSend = waitingSend;
-            if(nextWaitingSend) {
-                ofBuffer bufferToSend(sendBuffer);
-            }*/
+            mutex.lock();
+            int nextBufferSize = receiveBufferSize;//bytesAvailable; //socket().available(); //receiveBufferSize; // what to do if i get partial message? TODO
             mutex.unlock();
             
-            // send messages
-//            if(nextWaitingSend) {
-//                
-//                ofLog() << "Sending... " << sendBuffer.size();
-//                int bytesSent = socket().sendBytes(sendBuffer.getBinaryBuffer(), sendBuffer.size());
-//                ofLog() << "server sent message: " << bytesSent << " / " << sendBuffer.size();
-//                
-//                mutex.writeLock();
-//                waitingSend = false;
-//                mutex.unlock();
-//            }
+            // allocate a buffer to receive incoming message
+            ofBuffer nextBuffer;
+            nextBuffer.allocate(nextBufferSize + 1);
+            //ofLog() << "allocated for receive: " << nextBufferSize << ", " << receiveBufferSize;//socket().available();
             
-            
-            // current message must be read one at a time (or pushed into a queue- TODO) before continuing to process further messages
-            if(waitingMessage) continue;
-            
-            // receive messages
             int nBytes = -1;
             try {
                 
-                receiveBuffer.allocate(nextBufferSize + 1); // extra char for null terminated string. now buffer size == nextBufferSize
-                
+                // fill the buffer up to required size (eg. receiveBufferSize)
                 int bytesReceived = 0;
                 while (bytesReceived < nextBufferSize) {
-                    nBytes = socket().receiveBytes(&receiveBuffer.getBinaryBuffer()[bytesReceived], nextBufferSize-bytesReceived);
+                    socket().setKeepAlive(true);
+                    nBytes = socket().receiveBytes(&nextBuffer.getBinaryBuffer()[bytesReceived], nextBufferSize-bytesReceived);
                     if(nBytes == 0) break;
                     bytesReceived += nBytes;
                 }
                 
-                mutex.writeLock();
+                // push received message into a queue
+                // there is no limit on the queue, so need to be careful as it is emptied externally with getRawBuffer()
+                mutex.lock();
+                receiveBuffer = nextBuffer;
+                //receivedBuffers.push(receiveBuffer);
                 waitingMessage = true;
                 mutex.unlock();
                 
-                // for every 'receive' need to send back a reply. eg "1"
-                /*int bytesSent = socket().sendBytes(replyMessage.data(), replyMessage.size() + 1); // must add 1 for null terminated string
-                ofLog() << "Server send reply bytes: " << replyMessage.size() + 1;
-                
-                ofLog() << receiveBuffer.size();
-                if(callbackAdded) runCallback(receiveBuffer) ;//string(receiveBuffer.getText()));*/
             }
             catch (Poco::Exception& exc) {
                 //Handle your network errors.
-                ofLog() << "ofxTCPPocoConnection Error: " << exc.displayText();
+                ofLogVerbose() << "ofxTCPPocoConnection ReceiveError: " << exc.displayText();
+                socket().setKeepAlive(false);
                 isOpen = false;
             }
             
             
+            // client closed connection
             if (nBytes==0){
                 isOpen = false;
-                ofLog() << "ofxTCPPocoConnection Client closes connection!";
+                ofLogVerbose() << "ofxTCPPocoConnection Client closes connection!";
                 ofNotifyEvent(closeEvent, clientId, this);
             }
-        } else {
-            
-            // timeout occured. can now change data.
         }
+        
+        
+        // send messages from queue
+        /*mutex.lock();
+        bool hasMessagesToSend = messagesToSend;
+        int totalMessagesToSend = sendBuffers.size();
+        mutex.unlock();
+        
+        // TODO: check if socket was closed by client somehow
+        if(hasMessagesToSend) {
+            
+            for(int i = 0; i < totalMessagesToSend; i++) {
+                
+                ofBuffer sendBuffer;
+                getQueuedBuffer(sendBuffer);
+                
+                int nBytes = -1;
+                try {
+                    
+                    // send all the bytes
+                    int bytesSent = 0;
+                    while (bytesSent < sendBuffer.size()) {
+                        // when client exits- crashes at sendBytes. this keeps socket alive till at least after while loop.
+                        // then gets caught in exception error
+                        socket().setKeepAlive(true);
+                        
+                        nBytes = socket().sendBytes(&sendBuffer.getBinaryBuffer()[bytesSent], sendBuffer.size() - bytesSent);
+                        if(nBytes == 0) break;
+                        bytesSent += nBytes;
+                    }
+                    
+                    
+                    // message was sent
+                    //ofLog() << "sent message from server..." << nBytes <<" / " << bytesSent;
+                    
+                } catch (Poco::Exception& exc) {
+                    
+                    //Handle your network errors.
+                    ofLogVerbose() << "ofxTCPPocoConnection Send Error, closing connection: " << exc.displayText();
+                    //ofLogVerbose() << "ofxTCPPocoConnection Client closes connection!";
+                    isOpen = false;                    
+                    ofNotifyEvent(closeEvent, clientId, this);
+                    socket().setKeepAlive(false);
+                }
+            }
+        }*/
+        
+        // thread loop complete
+        
+        // sleep the thread
+        /*int processTime = ofGetElapsedTimeMillis() - startTime;
+        int diff = sleepTime - processTime; //processTime- 16 = 60fps, 33 = 30fps
+        if(diff < 1) diff = 1;
+        
+        //sleep(diff);
+        ofSleepMillis(diff);*/
     }
 
-    ofLog() << "ofxTCPPocoConnection connection finished!";
+    ofLogVerbose() << "ofxTCPPocoConnection connection finished!";
 }
 
 

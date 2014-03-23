@@ -2,8 +2,7 @@
 #include "ofxTCPPocoServer.h"
 
 
-ofxTCPPocoServer::ofxTCPPocoServer() {
-    
+ofxTCPPocoServer::ofxTCPPocoServer() {    
 }
 
 ofxTCPPocoServer::~ofxTCPPocoServer() {
@@ -17,29 +16,17 @@ ofxTCPPocoServer::~ofxTCPPocoServer() {
     serverSocket = NULL;
     //if(connection) delete connection;
     connection = NULL;
-    
+    waitingRequest = false;
 }
 
 void ofxTCPPocoServer::setup(int port){
     
     this->port = port;
-    //Create a server socket to listen.
-    /*Poco::Net::ServerSocket svs(port);
-     
-     //Configure some server params.
-     Poco::Net::TCPServerParams* pParams = new Poco::Net::TCPServerParams();
-     pParams->setMaxThreads(4);
-     pParams->setMaxQueued(4);
-     pParams->setThreadIdleTime(10);
-     
-     //Create your server
-     Poco::Net::TCPServer myServer(new Poco::Net::TCPServerConnectionFactoryImpl<ofxTCPPocoConnection>(), svs, pParams);
-     myServer.start();*/
     
     // alt setup...
     serverSocket = new Poco::Net::ServerSocket(port);    
     connection = new ofxTCPPocoConnectionFactory(); //Poco::Net::TCPServerConnectionFactoryImpl<ofxTCPPocoConnection>();
-    //ofAddListener(connection->connectionEvent, this, &ofxTCPPocoServer::onConnectionEstablished);
+    
     server = new Poco::Net::TCPServer(connection, *serverSocket);
     server->start();
 
@@ -62,100 +49,65 @@ int ofxTCPPocoServer::getNumClients() {
 }
 
 
-// receive (automatically pulled from ofxTCPPocoConnectionHandlers)
+// receive- non blocking (automatically pulled from ofxTCPPocoConnectionHandlers)
 //--------------------------------------------------------------
-// parses the saved message from the connection handler, allows further messages to be received
-// TODO: error checking, timeout, hasWaitingMessage check
-void ofxTCPPocoServer::getMessage(int clientId, string& msg) {
-    
-    msg = ofxTCPPocoUtils::parseMessage(connection->getConnectionHandlers()[clientId]->receiveBuffer, TCPPOCO_DELIMITER);
-    connection->getConnectionHandlers()[clientId]->waitingMessage = false;
+// receive size needs to be updated if the server is receiving anything larger than TCPPOCO_DEFAULT_MSG_SIZE
+// this need to be configured per message for each client connection handler
+void ofxTCPPocoServer::setReceiveSize(int clientId, int size) {
+    connection->getConnectionHandlers()[clientId]->setReceiveBufferSize(size);
 }
 
-void ofxTCPPocoServer::getRawBuffer(int clientId, ofBuffer& buffer) {
-    
-    // copy the saved data
-    buffer = connection->getConnectionHandlers()[clientId]->receiveBuffer;
-    connection->getConnectionHandlers()[clientId]->waitingMessage = false;
+// shoudl also store the boolean - as receiveMessage is expected to be called directly after this
+// avoid locking the mutex in the connection thread twice
+bool ofxTCPPocoServer::hasWaitingRequest(int clientId) {
+    if(server->currentConnections()) {
+        waitingRequest = connection->getConnectionHandlers()[clientId]->hasWaitingMessage();
+    } else {
+        waitingRequest = false;
+    }
+    return waitingRequest;
 }
 
-void ofxTCPPocoServer::getRawBuffer(int clientId, char* buffer, int& size) {
+// hasWaitingRequest must be called prior to this
+// non blocking - message/buffer should already exist in connection handler.
+bool ofxTCPPocoServer::receiveMessage(int clientId, string& msg) {
     
-    // need to change this to make a copy of the char* array
-    // currently just returning the address of the ofBuffers internal char array
-    buffer = connection->getConnectionHandlers()[clientId]->receiveBuffer.getBinaryBuffer();
-    size = connection->getConnectionHandlers()[clientId]->receiveBuffer.size();
-    //buffer = new char[size];
-    //memcpy(buffer, handlerRef->receiveBuffer.getBinaryBuffer(), size);
-    connection->getConnectionHandlers()[clientId]->waitingMessage = false;
+    if(waitingRequest) {
+        ofBuffer receiveBuffer;
+        connection->getConnectionHandlers()[clientId]->getRawBuffer(receiveBuffer);
+        msg = ofxTCPPocoUtils::parseMessage(receiveBuffer, TCPPOCO_DELIMITER);
+    }
+    return waitingRequest;
+}
+
+bool ofxTCPPocoServer::receiveRawBuffer(int clientId, ofBuffer& buffer) {
+    
+    if(waitingRequest) {
+        connection->getConnectionHandlers()[clientId]->getRawBuffer(buffer);
+    }
+    return waitingRequest;
 }
 
 
-// send
+
+
+// send - blocking
 //--------------------------------------------------------------
-void ofxTCPPocoServer::sendMessage(int clientId, string msg) {
-    
-    /*if(connected) {
-        bool result = ofxTCPPocoUtils::sendRawString(socketStream, msg, TCPPOCO_DEFAULT_MSG_SIZE);
-        ofLog() << "message sent..." << result;
-    }*/
-    
-    //Poco::Net::ServerSocket* serverSocket;
-    //Poco::Net::TCPServer* server;
-    //ofxTCPPocoConnectionFactory* connection;
-    
-    //serverSocket->get
-    
-    //Poco::Net::StreamSocket& socket= connection->getConnectionHandlers()[clientId]->socket();
-    
-    // sending messages from server need to be pushed into connection handler
+bool ofxTCPPocoServer::sendMessage(int clientId, string msg) {
     
     // format string before sending
-    string formatted = ofxTCPPocoUtils::buildMessage(msg, TCPPOCO_DEFAULT_MSG_SIZE);
+    string formatted = ofxTCPPocoUtils::buildPaddedMessage(msg, TCPPOCO_DEFAULT_MSG_SIZE);
     ofBuffer buffer(formatted);
-    connection->getConnectionHandlers()[clientId]->setSendBuffer(buffer);
+
+    // this call is blocking, not adding to queue anymore
+    return connection->getConnectionHandlers()[clientId]->sendRawBuffer(buffer);
+    
 }
 
-void ofxTCPPocoServer::sendRawBuffer(int clientId, ofBuffer& buffer) {
-    //sendRawBuffer(clientId, buffer.getBinaryBuffer(), buffer.size());
-    connection->getConnectionHandlers()[clientId]->setSendBuffer(buffer);
-}
-
-void ofxTCPPocoServer::sendRawBuffer(int clientId, char* buffer, int sendSize) {
+bool ofxTCPPocoServer::sendRawBuffer(int clientId, ofBuffer& buffer) {
     
-    /*if(connected) {
-        bool result = ofxTCPPocoUtils::sendRawBuffer(socketStream, buffer, sendSize);
-        ofLog() << "buffer sent..." << result;
-    }*/
-    
-    
-    //setSendBuffer
+    return connection->getConnectionHandlers()[clientId]->sendRawBuffer(buffer);
 }
 
 
-// need to create an event for ofxTCPPocoConnectionHandler to be created - and then callback added.
-/*void ofxTCPPocoServer::onConnectionEstablished(ofEventArgs& args) {
-    
-    ofLog() << "ofxTCPPocoServer received new client conncetion";
-}*/
-
-
-// TODO: timeout
-// adjusted for multiple clients
-bool ofxTCPPocoServer::hasWaitingMessage(int clientId) {
-    
-    if(server->currentConnections()) {
-        if(connection->getConnectionHandlers()[clientId]->hasWaitingMessage()) {
-            return true;
-        }
-    }
-    
-    return false;
-}
-
-
-
-void ofxTCPPocoServer::draw() {
-    
-}
 

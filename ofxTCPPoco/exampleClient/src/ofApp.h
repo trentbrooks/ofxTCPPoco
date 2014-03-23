@@ -27,7 +27,5 @@ class ofApp : public ofBaseApp{
         vector<string> receivedMessages;
     
     
-        // test receive image buffer + load into texture
-        ofTexture image;
 		
 };

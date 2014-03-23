@@ -9,7 +9,9 @@
 
 // http://stackoverflow.com/questions/16510205/multithread-tcp-server-with-poco-c-libraries
 // http://stackoverflow.com/questions/14632341/poconet-server-client-tcp-connection-event-handler
-// TODO: make it similar to ofxTCPClient so can drop in replace ofxNetwork.
+// TODO: make threaded like the server's connection handler- queueing, etc.
+// TODO: add timeouts to send and receive
+// TODO: add update function which handles reconnection
 
 //: public ofThread 
 class ofxTCPPocoClient {
@@ -24,28 +26,19 @@ public:
     // must be threaded for polling to receive a message
     //int sleepTime;
     //void threadedFunction();
-    
-    
-    // clients usually send then receive
-    void sendMessage(string msg);
+   
+    // messages must be the correct size on the receiving end
+    bool sendMessage(string& msg, int fillSize=TCPPOCO_DEFAULT_MSG_SIZE); // messages are padded to fill size
     void sendRawBuffer(ofBuffer& buffer);
     void sendRawBuffer(char* buffer, int sendSize);
     
     // receive works by polling in the thread
     // don't need thread anymore - can now use socket.available()
-    bool hasWaitingMessage();
-    void receiveMessage(string& msg);
-    void receiveRawBuffer(ofBuffer& buffer);
-    void receiveRawBuffer(char* buffer, int receiveSize);
+    bool receiveMessage(string& msg, int receiveSize=TCPPOCO_DEFAULT_MSG_SIZE); // blocking
+    bool receiveRawBuffer(ofBuffer& buffer, int receiveSize); // pass in new/empty ofBuffer
     
     
-    
-    void update();
-    void draw();
-    
-    Poco::Net::SocketAddress* socketAddress;
-    Poco::Net::StreamSocket* socketStream;
-    
+    // the connect timeout only occurs on the first run atm
     void setConnectTimeout(int timeoutInSeconds);
     //void setReceiveTimeout(int timeoutInSeconds);
     //void setSendTimeout(int timeoutInSeconds);
@@ -53,11 +46,13 @@ public:
     
 protected:
     
+    Poco::Net::SocketAddress* socketAddress;
+    Poco::Net::StreamSocket* socketStream;
+    
     Poco::Timespan connectTimeout;
     //Poco::Timespan receiveTimeout;
     //Poco::Timespan sendTimeout;
     
     Poco::Timespan pollTimeout;
-    
-    bool waitingMessage;
+
 };
