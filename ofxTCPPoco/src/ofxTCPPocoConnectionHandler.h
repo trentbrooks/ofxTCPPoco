@@ -60,6 +60,7 @@ public:
     //bool messagesToSend;
     
     ofEvent<int> closeEvent;
+    ofEvent<int> getCloseEvent();
     
     //int sleepTime;
     
@@ -72,5 +73,7 @@ protected:
     ofBuffer receiveBuffer;
     int receiveBufferSize;
 
+    // had to add this to avoid server crashing on exit when client closes
+    bool markSocketForDelete;
 };
 

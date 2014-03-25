@@ -7,10 +7,10 @@ ofxTCPPocoConnectionFactory::ofxTCPPocoConnectionFactory() {
 ofxTCPPocoConnectionFactory::~ofxTCPPocoConnectionFactory() {
     
     ofLog() << "ofxTCPPocoConnectionFactory deleted!";
-    /*for(int i = 0; i < connectionHandlers.size(); i++) {
+    for(int i = 0; i < connectionHandlers.size(); i++) {
      ofRemoveListener(connectionHandlers[i]->closeEvent, this, &ofxTCPPocoConnectionFactory::onDisconnection);
      //delete connectionHandlers[i];
-     }*/
+    }
     connectionHandlers.clear();
 }
 
@@ -29,6 +29,7 @@ Poco::Net::TCPServerConnection* ofxTCPPocoConnectionFactory::createConnection(co
     return handler;
 }
 
+// the connection handler gets deleted somewhere up the chain, this just deletes the extra pointer we saved and removes listener
 void ofxTCPPocoConnectionFactory::onDisconnection(int &clientId){
     
     for(int i = 0; i < connectionHandlers.size(); i++) {

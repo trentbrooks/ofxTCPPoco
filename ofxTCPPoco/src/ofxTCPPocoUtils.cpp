@@ -93,34 +93,41 @@ bool ofxTCPPocoUtils::sendPaddedMessage(Poco::Net::StreamSocket* socket, string&
 bool ofxTCPPocoUtils::sendRawBytes(Poco::Net::StreamSocket* socket, char* buffer, int sendSize) {
     
     // still problems with abrupt disconnection of client during server send
-    //int result = socket->sendBytes(&buffer[0], sendSize);
-    //if(result == sendSize) return true;
-    //return false;
+    // doesn't happen with localhost, but does with ios device on wifi
+
     
     try {
         // send all the bytes
         int bytesSent = 0;
+        
         while (bytesSent < sendSize) {
             
             // when receiving socket exits- can crash during sendBytes. this keeps socket alive till at least after while loop.
             // then gets caught in exception error
             //ofLog() << socket->getKeepAlive() << ", " << bytesSent << " / " << sendSize;
             socket->setKeepAlive(true);
+            //socket->setLinger(false, 0);
             
             // send all the bytes
             // getting a crash here on thread 2 when server is sending data
             int result = socket->sendBytes(&buffer[bytesSent], sendSize - bytesSent);
-            //ofLog() << result << " / " << sendSize;
+            //ofLog() << result << " / " << bytesSent << " / " << sendSize;
             //if(result == 0) return false; // not sure about this, not handling this case yet.
             bytesSent += result;
         }
         
         return true;
         
+        
     } catch (Poco::Exception& exc) {
         
         //cout << exc.displayText() << endl;
-        ofLog() << "ofxTCPPocoUtils sendRawBuffer error: " << exc.displayText();
+        ofLog() << "ofxTCPPocoUtils sendRawBuffer error: " << exc.displayText() << ". " << exc.code();
+        //ofLog() << socket->getKeepAlive();
+        //ofLog() << socket->get();
+        //socket->shutdownSend();
+        //if(exc.code() != 0)
+        //socket->setKeepAlive(false);
         return false;
     }
     

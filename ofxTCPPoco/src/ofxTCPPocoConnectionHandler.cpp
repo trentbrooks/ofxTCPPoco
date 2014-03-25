@@ -11,12 +11,16 @@ ofxTCPPocoConnectionHandler::ofxTCPPocoConnectionHandler(const Poco::Net::Stream
     //messagesToSend = false;
     clientId = -1;
     //sleepTime = 16;
+    markSocketForDelete = false;
     
-    
+    // socket options - avoids crash on exit when ios device disconnects: https://github.com/pocoproject/poco/issues/235
+    socket().setOption(SOL_SOCKET, SO_NOSIGPIPE, 1);
 }
 
 ofxTCPPocoConnectionHandler::~ofxTCPPocoConnectionHandler() {
-    ofLog() << "*** connection deleted!";
+    ofLog() << "*** ofxTCPPocoConnectionHandler deleted!";
+    ofNotifyEvent(closeEvent, clientId, this);
+    //socket().setKeepAlive(false);
 }
 
 
@@ -65,6 +69,7 @@ void ofxTCPPocoConnectionHandler::setReceiveBufferSize(int size) {
 
 
 // for writing messages...
+
 //--------------------------------------------------------------
 // blocking message sending
 bool ofxTCPPocoConnectionHandler::sendRawBuffer(ofBuffer& buffer) {
@@ -72,15 +77,12 @@ bool ofxTCPPocoConnectionHandler::sendRawBuffer(ofBuffer& buffer) {
     bool sent = false;
     mutex.lock();
     
-    //Poco::Timespan timeOut(0,100000);
-    //socket().setSendTimeout(timeOut);
     sent = ofxTCPPocoUtils::sendRawBytes(&socket(), buffer.getBinaryBuffer(), buffer.size());
     if(!sent) {
-        //ofLog() << "send fail???";
-        // problem with connection- check error message log
-        socket().setKeepAlive(false);
-        ofNotifyEvent(closeEvent, clientId, this);
         
+        // this avoids the server crash on client exit
+        // will still crash when disconnecting an ios device unless ignore SIGPIPE socket().setOption(SOL_SOCKET, SO_NOSIGPIPE, 1);
+        markSocketForDelete = true;
     }
     
     mutex.unlock();
@@ -172,11 +174,19 @@ void ofxTCPPocoConnectionHandler::run() {
             if (nBytes==0){
                 isOpen = false;
                 ofLogVerbose() << "ofxTCPPocoConnection Client closes connection!";
-                ofNotifyEvent(closeEvent, clientId, this);
+                //ofNotifyEvent(closeEvent, clientId, this);
             }
         }
         
         
+        // can gracefully close connection if previously marked socket for delete
+        if(markSocketForDelete) {
+            markSocketForDelete = true;
+            isOpen = false;
+            socket().setKeepAlive(false);
+            ofLogVerbose() << "ofxTCPPocoConnection closed connection during send!";
+            //ofNotifyEvent(closeEvent, clientId, this);
+        }
         // send messages from queue
         /*mutex.lock();
         bool hasMessagesToSend = messagesToSend;
@@ -236,4 +246,10 @@ void ofxTCPPocoConnectionHandler::run() {
     ofLogVerbose() << "ofxTCPPocoConnection connection finished!";
 }
 
+
+// thread safe getting of event - not working
+ofEvent<int> ofxTCPPocoConnectionHandler::getCloseEvent() {
+    Poco::ScopedLock<ofMutex> lock(mutex);
+    return closeEvent;
+}
 
