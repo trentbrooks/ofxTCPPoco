@@ -7,6 +7,7 @@
  - then receives the image buffer
  */
 
+
 //--------------------------------------------------------------
 void ofApp::setup(){
 
@@ -14,30 +15,36 @@ void ofApp::setup(){
     
     // client
     int port = 12345;
-    string ip = "localhost";
+    string ip = "localhost"; // "192.168.1.68";//
     client.setup(ip, port);
+
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
 
-    
-    string pingMessage = "ping";
-    bool sentPing = client.sendMessage(pingMessage);
-    if(sentPing) {
-        
-        string replyHeader; // this will contain the size in bytes of the image buffer
-        bool receivedReply = client.receiveMessage(replyHeader, TCPPOCO_DEFAULT_MSG_SIZE);
-        
-        if(receivedReply) {
-
-            ofBuffer buffer;
-            bool receivedBufferReply = client.receiveRawBuffer(buffer, ofToInt(replyHeader));
-            if(receivedBufferReply) {
-                ofLoadImage(image, buffer);
+    if(client.connected) {
+        // send a ping message
+        string pingMessage = "ping";
+        bool sentPing = client.sendMessage(pingMessage);
+        if(sentPing) {
+            
+            // receive a header message
+            string replyHeader; // this will contain the size in bytes of the image buffer
+            bool receivedReply = client.receiveMessage(replyHeader, TCPPOCO_DEFAULT_MSG_SIZE);
+            
+            if(receivedReply) {
+                
+                // receive the image buffer in 2 steps
+                ofBuffer buffer;
+                bool receivedBufferReply = client.receiveRawBuffer(buffer, ofToInt(replyHeader));
+                if(receivedBufferReply) {
+                    ofLoadImage(image, buffer);
+                    bufferSize = buffer.size();
+                }
             }
-        }        
-    }
+        }
+    }     
 
 }
 
@@ -47,7 +54,6 @@ void ofApp::draw(){
     // draw the image we received
     ofSetColor(255);
     if(image.isAllocated()) image.draw(0,0);
-    
    
     
     // info

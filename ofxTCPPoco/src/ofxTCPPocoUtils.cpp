@@ -63,6 +63,8 @@ bool ofxTCPPocoUtils::receiveRawBytes(Poco::Net::StreamSocket* socket, char* buf
             int result = socket->receiveBytes(&buffer[bytesReceived], receiveSize-bytesReceived);
             //if(result == 0) return false; // not sure about this, not handling this case yet.
             bytesReceived += result;
+            
+            //ofLog() << "syck in a loop receiving bytes: " << bytesReceived << ", " << receiveSize << ", " << result;
         }
         
         return true;
@@ -114,6 +116,7 @@ bool ofxTCPPocoUtils::sendRawBytes(Poco::Net::StreamSocket* socket, char* buffer
             //ofLog() << result << " / " << bytesSent << " / " << sendSize;
             //if(result == 0) return false; // not sure about this, not handling this case yet.
             bytesSent += result;
+            
         }
         
         return true;

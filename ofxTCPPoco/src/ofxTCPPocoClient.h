@@ -12,6 +12,7 @@
 // TODO: make threaded like the server's connection handler- queueing, etc.
 // TODO: add timeouts to send and receive
 // TODO: add update function which handles reconnection
+// TODO: detect when server closes ('connected' needs to reset)
 
 //: public ofThread 
 class ofxTCPPocoClient {
@@ -42,7 +43,10 @@ public:
     void setConnectTimeout(int timeoutInSeconds);
     //void setReceiveTimeout(int timeoutInSeconds);
     //void setSendTimeout(int timeoutInSeconds);
-    void setPollTimeout(int timeoutInSeconds);
+    //void setPollTimeout(int timeoutInSeconds);
+    
+    void disconnect();
+    
     
 protected:
     
@@ -53,6 +57,9 @@ protected:
     //Poco::Timespan receiveTimeout;
     //Poco::Timespan sendTimeout;
     
-    Poco::Timespan pollTimeout;
+    //Poco::Timespan pollTimeout;
+    
+    int maxReadTime;
+    
 
 };

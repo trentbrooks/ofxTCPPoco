@@ -14,7 +14,8 @@ ofxTCPPocoConnectionHandler::ofxTCPPocoConnectionHandler(const Poco::Net::Stream
     markSocketForDelete = false;
     
     // socket options - avoids crash on exit when ios device disconnects: https://github.com/pocoproject/poco/issues/235
-    socket().setOption(SOL_SOCKET, SO_NOSIGPIPE, 1);
+    //socket().setOption(SOL_SOCKET, SO_NOSIGPIPE, 1);
+    //socket().setBlocking(false);
 }
 
 ofxTCPPocoConnectionHandler::~ofxTCPPocoConnectionHandler() {
@@ -90,28 +91,6 @@ bool ofxTCPPocoConnectionHandler::sendRawBuffer(ofBuffer& buffer) {
 }
 
 
-/*void ofxTCPPocoConnectionHandler::queueRawBuffer(ofBuffer& buffer) {
-    
-    mutex.lock();
-    sendBuffers.push(buffer);
-    messagesToSend = true;
-    mutex.unlock();
-}
-
-// same as getRawBuffer(), but for internal use by the sender thread
-// gets next buffer from queue
-void ofxTCPPocoConnectionHandler::getQueuedBuffer(ofBuffer& buffer) {
-    
-    mutex.lock();
-    buffer = sendBuffers.front();
-    sendBuffers.pop();
-    if(sendBuffers.size() == 0) {
-        messagesToSend = false;
-    }
-    mutex.unlock();
-}*/
-
-
 
 // thread loop
 //--------------------------------------------------------------
@@ -122,14 +101,10 @@ void ofxTCPPocoConnectionHandler::run() {
     
     while(isOpen) {
         
-        //int startTime = ofGetElapsedTimeMillis();
         // read messages when data is available (or a blocking alternative- socket().poll(timeOut,Poco::Net::Socket::SELECT_READ)
         //if(socket().available()) {
-        //ofLog() << "...";
         // this needs to change- currently dont know how many bytes i will receive
         int bytesAvailable = socket().available();
-        //ofLog() << bytesAvailable << " : " << ofGetFrameNum();
-        //while(socket().available()) {
         if(bytesAvailable >= receiveBufferSize) {
 
             mutex.lock();
@@ -187,60 +162,7 @@ void ofxTCPPocoConnectionHandler::run() {
             ofLogVerbose() << "ofxTCPPocoConnection closed connection during send!";
             //ofNotifyEvent(closeEvent, clientId, this);
         }
-        // send messages from queue
-        /*mutex.lock();
-        bool hasMessagesToSend = messagesToSend;
-        int totalMessagesToSend = sendBuffers.size();
-        mutex.unlock();
         
-        // TODO: check if socket was closed by client somehow
-        if(hasMessagesToSend) {
-            
-            for(int i = 0; i < totalMessagesToSend; i++) {
-                
-                ofBuffer sendBuffer;
-                getQueuedBuffer(sendBuffer);
-                
-                int nBytes = -1;
-                try {
-                    
-                    // send all the bytes
-                    int bytesSent = 0;
-                    while (bytesSent < sendBuffer.size()) {
-                        // when client exits- crashes at sendBytes. this keeps socket alive till at least after while loop.
-                        // then gets caught in exception error
-                        socket().setKeepAlive(true);
-                        
-                        nBytes = socket().sendBytes(&sendBuffer.getBinaryBuffer()[bytesSent], sendBuffer.size() - bytesSent);
-                        if(nBytes == 0) break;
-                        bytesSent += nBytes;
-                    }
-                    
-                    
-                    // message was sent
-                    //ofLog() << "sent message from server..." << nBytes <<" / " << bytesSent;
-                    
-                } catch (Poco::Exception& exc) {
-                    
-                    //Handle your network errors.
-                    ofLogVerbose() << "ofxTCPPocoConnection Send Error, closing connection: " << exc.displayText();
-                    //ofLogVerbose() << "ofxTCPPocoConnection Client closes connection!";
-                    isOpen = false;                    
-                    ofNotifyEvent(closeEvent, clientId, this);
-                    socket().setKeepAlive(false);
-                }
-            }
-        }*/
-        
-        // thread loop complete
-        
-        // sleep the thread
-        /*int processTime = ofGetElapsedTimeMillis() - startTime;
-        int diff = sleepTime - processTime; //processTime- 16 = 60fps, 33 = 30fps
-        if(diff < 1) diff = 1;
-        
-        //sleep(diff);
-        ofSleepMillis(diff);*/
     }
 
     ofLogVerbose() << "ofxTCPPocoConnection connection finished!";

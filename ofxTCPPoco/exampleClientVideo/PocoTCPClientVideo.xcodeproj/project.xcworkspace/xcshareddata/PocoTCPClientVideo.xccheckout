@@ -5,36 +5,36 @@
 	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
 	<false/>
 	<key>IDESourceControlProjectIdentifier</key>
-	<string>97A8CE8D-5AF5-4F99-AF37-4D6118A47C61</string>
+	<string>B5BD5DAA-06CD-4FEE-8C55-6FD4F13B08CF</string>
 	<key>IDESourceControlProjectName</key>
 	<string>PocoTCPClientVideo</string>
 	<key>IDESourceControlProjectOriginsDictionary</key>
 	<dict>
-		<key>7C7FEFC1-3B90-4BE7-9220-ABA1B52B96F2</key>
-		<string>https://github.com/trentbrooks/ofxTCPPoco.git</string>
+		<key>C581608E-7387-427F-B305-4BC7A6B09892</key>
+		<string>https://github.com/trentbrooks/openFrameworks.git</string>
 	</dict>
 	<key>IDESourceControlProjectPath</key>
-	<string>ofxTCPPoco/exampleClientVideo/PocoTCPClientVideo.xcodeproj/project.xcworkspace</string>
+	<string>addons/ofxTCPPoco/exampleClientVideo/PocoTCPClientVideo.xcodeproj/project.xcworkspace</string>
 	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
 	<dict>
-		<key>7C7FEFC1-3B90-4BE7-9220-ABA1B52B96F2</key>
-		<string>../../../..</string>
+		<key>C581608E-7387-427F-B305-4BC7A6B09892</key>
+		<string>../../../../..</string>
 	</dict>
 	<key>IDESourceControlProjectURL</key>
-	<string>https://github.com/trentbrooks/ofxTCPPoco.git</string>
+	<string>https://github.com/trentbrooks/openFrameworks.git</string>
 	<key>IDESourceControlProjectVersion</key>
 	<integer>110</integer>
 	<key>IDESourceControlProjectWCCIdentifier</key>
-	<string>7C7FEFC1-3B90-4BE7-9220-ABA1B52B96F2</string>
+	<string>C581608E-7387-427F-B305-4BC7A6B09892</string>
 	<key>IDESourceControlProjectWCConfigurations</key>
 	<array>
 		<dict>
 			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
 			<string>public.vcs.git</string>
 			<key>IDESourceControlWCCIdentifierKey</key>
-			<string>7C7FEFC1-3B90-4BE7-9220-ABA1B52B96F2</string>
+			<string>C581608E-7387-427F-B305-4BC7A6B09892</string>
 			<key>IDESourceControlWCCName</key>
-			<string>ofxTCPPoco</string>
+			<string>openFrameworks</string>
 		</dict>
 	</array>
 </dict>

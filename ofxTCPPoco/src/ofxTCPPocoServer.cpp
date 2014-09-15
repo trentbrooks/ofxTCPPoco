@@ -40,6 +40,7 @@ void ofxTCPPocoServer::printServerInfo() {
     ofLog() << "connections: " << server->currentConnections();
     ofLog() << "total connections: " << server->totalConnections();
     ofLog() << "threads: " << server->currentThreads();
+    ofLog() << "ip: " << serverSocket->address().toString();
 }
 
 

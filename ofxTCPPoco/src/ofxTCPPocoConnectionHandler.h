@@ -52,13 +52,6 @@ public:
     bool sendMessage(string& message);
     
     
-    // old sending (queued)
-    // when sending a message - need to be pushed into queue here
-    //void queueRawBuffer(ofBuffer& buffer);
-    //queue<ofBuffer> sendBuffers;
-    //void getQueuedBuffer(ofBuffer& buffer);
-    //bool messagesToSend;
-    
     ofEvent<int> closeEvent;
     ofEvent<int> getCloseEvent();
     

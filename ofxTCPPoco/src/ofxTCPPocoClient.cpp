@@ -5,10 +5,11 @@
 ofxTCPPocoClient::ofxTCPPocoClient() {
     
     connected = false;
+    maxReadTime = 10;
     setConnectTimeout(10);
-    //setReceiveTimeout(1);
+    //setReceiveTimeout(10);
     //setSendTimeout(1);
-    setPollTimeout(TCPPOCO_POLL_TIME);
+    //setPollTimeout(TCPPOCO_POLL_TIME);
     //sleepTime = 16;
 }
 
@@ -34,11 +35,21 @@ void ofxTCPPocoClient::setup(string ipAddr, int port) {
         // start the thread
         //startThread(); // true, false = blocking, verbose by default
         
+        
     } catch (Poco::Exception& exc) {
+        
+        disconnect();
         
         ofLog() << "ofxTCPPocoClient Error: could not create stream socket- " << exc.displayText();
     }
 
+}
+
+void ofxTCPPocoClient::disconnect() {
+    
+    connected = false;
+    if(socketAddress) delete socketAddress;
+    if(socketStream) delete socketStream;
 }
 
 // send
@@ -86,14 +97,21 @@ void ofxTCPPocoClient::sendRawBuffer(char* buffer, int sendSize) {
 // receive / replys
 //--------------------------------------------------------------
 // TODO: add polling instead of while loop, or figure out a better threading solution
+// eg. http://stackoverflow.com/questions/14632341/poconet-server-client-tcp-connection-event-handler
 bool ofxTCPPocoClient::receiveMessage(string& msg, int receiveSize) {
     
-    //if (socketStream().poll(timeOut,Poco::Net::Socket::SELECT_READ)){
     if(connected) {
         
         // blocking
+        float startReadTime = ofGetElapsedTimef();
         while (socketStream->available() < receiveSize) {
             // poll / waiting until received enough bytes
+            
+            // or manually set a timeout
+            if(ofGetElapsedTimef() - startReadTime > maxReadTime) {
+                disconnect(); // if we have not received data in X amount of time, the connection must be lost
+                return false;
+            }
         }
         
         // also blocking
@@ -108,8 +126,15 @@ bool ofxTCPPocoClient::receiveRawBuffer(ofBuffer& buffer, int receiveSize) {
     if(connected) {
         
         // blocking
+        float startReadTime = ofGetElapsedTimef();
         while (socketStream->available() < receiveSize) {
             // poll / waiting until received enough bytes
+            
+            // or manually set a timeout
+            if(ofGetElapsedTimef() - startReadTime > maxReadTime) {
+                disconnect(); // if we have not received data in X amount of time, the connection must be lost
+                return false;
+            }
         }
         
         buffer.allocate(receiveSize+1);
@@ -137,16 +162,17 @@ void ofxTCPPocoClient::setConnectTimeout(int timeoutInSeconds) {
     if(connected) {
         socketStream->setReceiveTimeout(receiveTimeout);
     }
-}
+}*/
 
+/*
 void ofxTCPPocoClient::setSendTimeout(int timeoutInSeconds) {
     sendTimeout.assign(timeoutInSeconds, 0);
     if(connected) {
         socketStream->setSendTimeout(sendTimeout);
     }
-}*/
+}
 
 void ofxTCPPocoClient::setPollTimeout(int timeoutInSeconds) {
     
     pollTimeout.assign(timeoutInSeconds, 0);
-}
+}*/
