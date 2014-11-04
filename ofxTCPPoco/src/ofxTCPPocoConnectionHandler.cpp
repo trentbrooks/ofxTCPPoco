@@ -39,7 +39,7 @@ void ofxTCPPocoConnectionHandler::getRawBuffer(ofBuffer& buffer) {
     
     mutex.lock();
     buffer = receiveBuffer;
-    waitingMessage = true;
+    waitingMessage = false;
 //    buffer = receivedBuffers.front();
 //    receivedBuffers.pop();
 //    if(receivedBuffers.size() == 0) {
