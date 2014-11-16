@@ -16,35 +16,45 @@ void ofApp::setup(){
     // client
     int port = 12345;
     string ip = "localhost"; // "192.168.1.68";//
-    client.setup(ip, port);
+    client.connect(ip, port);
 
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
 
-    if(client.connected) {
-        // send a ping message
-        string pingMessage = "ping";
-        bool sentPing = client.sendMessage(pingMessage);
-        if(sentPing) {
-            
-            // receive a header message
-            string replyHeader; // this will contain the size in bytes of the image buffer
-            bool receivedReply = client.receiveMessage(replyHeader, TCPPOCO_DEFAULT_MSG_SIZE);
-            
-            if(receivedReply) {
-                
-                // receive the image buffer in 2 steps
-                ofBuffer buffer;
-                bool receivedBufferReply = client.receiveRawBuffer(buffer, ofToInt(replyHeader));
-                if(receivedBufferReply) {
-                    ofLoadImage(image, buffer);
-                    bufferSize = buffer.size();
-                }
-            }
+    while(client.hasWaitingMessage()) {
+
+        ofBuffer buffer;
+        bool receivedBuffer = client.getRawBuffer(buffer);
+        if(receivedBuffer) {
+            ofLoadImage(image, buffer);
+            bufferSize = buffer.size();
         }
-    }     
+    }
+    
+//    if(client.connected) {
+//        // send a ping message
+//        string pingMessage = "ping";
+//        bool sentPing = client.sendMessage(pingMessage);
+//        if(sentPing) {
+//            
+//            // receive a header message
+//            string replyHeader; // this will contain the size in bytes of the image buffer
+//            bool receivedReply = client.receiveMessage(replyHeader, TCPPOCO_DEFAULT_MSG_SIZE);
+//            
+//            if(receivedReply) {
+//                
+//                // receive the image buffer in 2 steps
+//                ofBuffer buffer;
+//                bool receivedBufferReply = client.receiveRawBuffer(buffer, ofToInt(replyHeader));
+//                if(receivedBufferReply) {
+//                    ofLoadImage(image, buffer);
+//                    bufferSize = buffer.size();
+//                }
+//            }
+//        }
+//    }     
 
 }
 

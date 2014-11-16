@@ -21,7 +21,8 @@
  */
 
 
-#define TCPPOCO_DEFAULT_MSG_SIZE 32
+#define TCPPOCO_DEFAULT_MSG_SIZE 256
+#define TCPPOCO_HEADER_MSG_SIZE 4
 #define TCPPOCO_REPLY "1"
 #define TCPPOCO_DELIMITER '|'
 #define TCPPOCO_POLL_TIME 5
@@ -35,7 +36,7 @@ public:
     static bool receiveRawBytes(Poco::Net::StreamSocket* clientSocket, char* buffer, int receiveSize);
     
     // sender helpers
-    static bool sendRawBytes(Poco::Net::StreamSocket* socket, char* buffer, int sendSize);
+    static bool sendRawBytes(Poco::Net::StreamSocket* socket, const char* buffer, int sendSize);
     static bool sendPaddedMessage(Poco::Net::StreamSocket* socket, string& message, int fillSize);
     
     

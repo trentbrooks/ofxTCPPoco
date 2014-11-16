@@ -92,7 +92,7 @@ bool ofxTCPPocoUtils::sendPaddedMessage(Poco::Net::StreamSocket* socket, string&
     return success;
 }
 
-bool ofxTCPPocoUtils::sendRawBytes(Poco::Net::StreamSocket* socket, char* buffer, int sendSize) {
+bool ofxTCPPocoUtils::sendRawBytes(Poco::Net::StreamSocket* socket, const char* buffer, int sendSize) {
     
     // still problems with abrupt disconnection of client during server send
     // doesn't happen with localhost, but does with ios device on wifi

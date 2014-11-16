@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "ofMain.h"
 #include "Poco/Net/TCPServerConnectionFactory.h"
 #include "Poco/Net/TCPServerConnection.h"

@@ -3,18 +3,19 @@
 
 /*
  ofxTCPPocoServer server example.
- - server receives a request or ping
- - server sends back a reply or ack
+ - server receives messages from all clients
+ - server sends a message to all on key press
  */
+
 //--------------------------------------------------------------
 void ofApp::setup(){
 
-    //ofSetVerticalSync(true);
     ofSetFrameRate(60);
-    
+        
     // server
     int port = 12345;
-    server.setup(port);
+    server.start(port);
+
 }
 
 //--------------------------------------------------------------
@@ -23,42 +24,27 @@ void ofApp::update(){
     // check server for incoming messages from all clients
     for(int i = 0; i < server.getNumClients(); i++) {
         
-        // set a receive size per client connection before checking for requests, so know what buffer size needs to be filled for a request
-        //server.setReceiveSize(i, TCPPOCO_DEFAULT_MSG_SIZE);
-        if(server.hasWaitingRequest(i)) {
-            
+        while(server.hasWaitingMessage(i)) {
             string message;
-            bool receivedRequest = server.receiveMessage(i, message);
-            if(receivedRequest) {
-                
-                // once request is received, do something with it then respond with a reply or ack
+            bool receivedMsg = server.getMessage(i, message);
+            if(receivedMsg) {
                 receivedMessages.push_back(message);
-                
-                string replyMessage = "Thanks, server received:" + ofToString(message.size()) + " bytes";
-                bool sentReply = server.sendMessage(i, replyMessage);
-                if(sentReply) {
-                    sentMessages.push_back(replyMessage);
-                }
-            } else {
-                ofLog() << "failed to receive";
             }
-            
         }
     }
+    
+//    string message = "Hello from server " + ofToString(sentMessages.size());
+//    bool sentMsg = server.sendMessageToAll(message);
+//    if(sentMsg) {
+//        sentMessages.push_back(message);
+//    }
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
 
-
-    ofPushMatrix();
-    ofPushStyle();
     ofSetColor(255);
-    ofTranslate(ofGetWidth()*.5, ofGetHeight()*.5);
-    ofRotateZ(sin(ofGetElapsedTimef()) * 360);
-    ofRect(-50, -50, 100, 100);
-    ofPopStyle();
-    ofPopMatrix();
+    ofDrawCircle(ofGetMouseX(), ofGetMouseY(), 20);
     
     
     // display received messages/requests
@@ -82,12 +68,12 @@ void ofApp::draw(){
     
     
     
-    
     // info
     stringstream output;
     output << "ofxTCPPocoServer." << endl;
     output << "Press a key to send a message" << endl;
-    output << "Client connections: " << server.getNumClients();
+    output << "Client connections: " << server.getNumClients() << endl;
+    output << "Fps: " << ofGetFrameRate();
     ofDrawBitmapStringHighlight(output.str(), 20, 20);
     
 }
@@ -99,7 +85,13 @@ void ofApp::keyPressed(int key){
 
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key){
-
+    
+    
+    string message = "Hello from server " + ofToString(sentMessages.size());
+    bool sentMsg = server.sendMessageToAll(message);
+    if(sentMsg) {
+        sentMessages.push_back(message);
+    }
 }
 
 //--------------------------------------------------------------

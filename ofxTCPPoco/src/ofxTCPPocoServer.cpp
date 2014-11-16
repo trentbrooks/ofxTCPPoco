@@ -2,13 +2,30 @@
 #include "ofxTCPPocoServer.h"
 
 
-ofxTCPPocoServer::ofxTCPPocoServer() {    
+ofxTCPPocoServer::ofxTCPPocoServer() {
+    server = NULL;
+    serverSocket = NULL;
+    connection = NULL;
 }
 
 ofxTCPPocoServer::~ofxTCPPocoServer() {
+    ofLog() << "~ofxTCPPocoServer deleted";
+    disconnect();
     
-    server->stop();
-    serverSocket->close();
+}
+
+void ofxTCPPocoServer::disconnect() {
+   
+    /*if(serverSocket) {        
+        try {
+            serverSocket->setLinger(true, 0);
+            //serverSocket->close();
+        } catch (Poco::Exception& exc) {
+            // server must be closed or the above crashes on exit
+            ofLogError() << "* ~ofxTCPPocoServer failed to setLinger: " << exc.displayText();
+        }
+    }*/
+    if(server) server->stop();
     
     delete server;
     server = NULL;
@@ -19,17 +36,18 @@ ofxTCPPocoServer::~ofxTCPPocoServer() {
     waitingRequest = false;
 }
 
-void ofxTCPPocoServer::setup(int port){
+void ofxTCPPocoServer::start(int port){
     
     this->port = port;
     
     // alt setup...
     serverSocket = new Poco::Net::ServerSocket(port);    
-    connection = new ofxTCPPocoConnectionFactory(); //Poco::Net::TCPServerConnectionFactoryImpl<ofxTCPPocoConnection>();
+    connection = new ofxTCPPocoConnectionFactory();
     
     server = new Poco::Net::TCPServer(connection, *serverSocket);
     server->start();
-
+    
+    //serverSocket->setNoDelay(true);
 }
 
 
@@ -45,7 +63,6 @@ void ofxTCPPocoServer::printServerInfo() {
 
 
 int ofxTCPPocoServer::getNumClients() {
-    //return connection->getNumConnections();
     return server->currentConnections();
 }
 
@@ -60,7 +77,7 @@ void ofxTCPPocoServer::setReceiveSize(int clientId, int size) {
 
 // shoudl also store the boolean - as receiveMessage is expected to be called directly after this
 // avoid locking the mutex in the connection thread twice
-bool ofxTCPPocoServer::hasWaitingRequest(int clientId) {
+bool ofxTCPPocoServer::hasWaitingMessage(int clientId) {
     if(server->currentConnections()) {
         waitingRequest = connection->getConnectionHandlers()[clientId]->hasWaitingMessage();
     } else {
@@ -71,18 +88,17 @@ bool ofxTCPPocoServer::hasWaitingRequest(int clientId) {
 
 // hasWaitingRequest must be called prior to this
 // non blocking - message/buffer should already exist in connection handler.
-bool ofxTCPPocoServer::receiveMessage(int clientId, string& msg) {
-    
+bool ofxTCPPocoServer::getMessage(int clientId, string& msg) {
     if(waitingRequest) {
         ofBuffer receiveBuffer;
         connection->getConnectionHandlers()[clientId]->getRawBuffer(receiveBuffer);
-        msg = ofxTCPPocoUtils::parseMessage(receiveBuffer, TCPPOCO_DELIMITER);
+        //msg = ofxTCPPocoUtils::parseMessage(receiveBuffer, TCPPOCO_DELIMITER);
+        msg = receiveBuffer.getData();
     }
     return waitingRequest;
 }
 
-bool ofxTCPPocoServer::receiveRawBuffer(int clientId, ofBuffer& buffer) {
-    
+bool ofxTCPPocoServer::getRawBuffer(int clientId, ofBuffer& buffer) {
     if(waitingRequest) {
         connection->getConnectionHandlers()[clientId]->getRawBuffer(buffer);
     }
@@ -91,24 +107,53 @@ bool ofxTCPPocoServer::receiveRawBuffer(int clientId, ofBuffer& buffer) {
 
 
 
-
 // send - blocking
 //--------------------------------------------------------------
 bool ofxTCPPocoServer::sendMessage(int clientId, string msg) {
     
     // format string before sending
-    string formatted = ofxTCPPocoUtils::buildPaddedMessage(msg, TCPPOCO_DEFAULT_MSG_SIZE);
-    ofBuffer buffer(formatted);
+    //string formatted = ofxTCPPocoUtils::buildPaddedMessage(msg, TCPPOCO_DEFAULT_MSG_SIZE);
+    //ofBuffer buffer(formatted);
 
-    // this call is blocking, not adding to queue anymore
-    return connection->getConnectionHandlers()[clientId]->sendRawBuffer(buffer);
-    
+    return sendRawBuffer(clientId, msg.data(), msg.size());
 }
 
 bool ofxTCPPocoServer::sendRawBuffer(int clientId, ofBuffer& buffer) {
-    
-    return connection->getConnectionHandlers()[clientId]->sendRawBuffer(buffer);
+
+    return sendRawBuffer(clientId, buffer.getData(), buffer.size());
 }
 
+bool ofxTCPPocoServer::sendRawBuffer(int clientId, const char* buffer, int size) {
+    if(clientId < getNumClients()) {
+        return connection->getConnectionHandlers()[clientId]->sendRawBuffer(buffer, size);
+    } else {
+        ofLogError() << "* Invalid clientId " << clientId << ", Connections: " << getNumClients();
+    }
+}
+
+bool ofxTCPPocoServer::sendMessageToAll(string msg) {
+
+    return sendRawBufferToAll(msg.data(), msg.size());
+}
+
+bool ofxTCPPocoServer::sendRawBufferToAll(ofBuffer& buffer) {
+    
+    return sendRawBufferToAll(buffer.getData(), buffer.size());
+}
+
+bool ofxTCPPocoServer::sendRawBufferToAll(const char* buffer, int size) {
+    if(getNumClients() == 0) {
+        ofLogError() << "* No clients to sent to";
+        return false;
+    }
+    bool sent = true;
+    for(int i = 0; i < connection->getNumConnections(); i++) {
+        if(!sendRawBuffer(i, buffer, size)) {
+            ofLogError() << "* Failed to send to client: " << i;
+            sent = false;
+        }
+    }
+    return sent;
+}
 
 

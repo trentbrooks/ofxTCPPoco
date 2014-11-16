@@ -32,34 +32,21 @@ void ofApp::update(){
         
         // thread the buffer encode/saving to increase performance
         ofSaveImage(video.getPixelsRef(), imageBuffer, OF_IMAGE_FORMAT_JPEG, OF_IMAGE_QUALITY_MEDIUM);
+        
+        // send buffer to all clients
+        server.sendRawBufferToAll(imageBuffer);
     }
     
     
-    // check server for incoming messages from all clients
-    // we are going to receive a ping message, and send back 2 messages (buffer size + image buffer)
+    // check server for incoming messages 
     for(int i = 0; i < server.getNumClients(); i++) {
         
-        if(server.hasWaitingRequest(i)) {
+        while(server.hasWaitingMessage(i)) {
 
-            string pingMessage;
-            bool receivedPing = server.receiveMessage(i, pingMessage);
-            if(receivedPing) {
-                if(pingMessage == "ping") {
-                    
-                    // send back a reply header with the size of the image buffer
-                    string replyMessage = ofToString(imageBuffer.size());
-                    bool sentReplyHeader = server.sendMessage(i, replyMessage);
-
-                    if(sentReplyHeader) {
-                        
-                        // send back image buffer
-                        string replyMessage = ofToString(imageBuffer.size());
-                        bool sentReplyBuffer = server.sendRawBuffer(i, imageBuffer);
-                    }
-                }
-               
-            } else {
-                ofLog() << "failed to receive";
+            string message;
+            bool received = server.receiveMessage(i, message);
+            if(received) {
+                ofLog() << "Received message from client: " << i << " : " << message;
             }
             
         }

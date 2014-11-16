@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		422448b48b941d5aa8339a54 /* ofxTCPPocoConnectionHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = a316f8599b52bd931392354d /* ofxTCPPocoConnectionHandler.cpp */; };
-		89860b7acbfb3b983e743a31 /* ofxTCPPocoUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = fc45d8823bb56a43c96f529a /* ofxTCPPocoUtils.cpp */; };
 		BBAB23CB13894F3D00AA2426 /* GLUT.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = BBAB23BE13894E4700AA2426 /* GLUT.framework */; };
 		E4328149138ABC9F0047C5CB /* openFrameworksDebug.a in Frameworks */ = {isa = PBXBuildFile; fileRef = E4328148138ABC890047C5CB /* openFrameworksDebug.a */; };
 		E45BE97B0E8CC7DD009D7055 /* AGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E45BE9710E8CC7DD009D7055 /* AGL.framework */; };
@@ -94,12 +93,10 @@
 		E7E077E715D3B6510020DFD4 /* QTKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QTKit.framework; path = /System/Library/Frameworks/QTKit.framework; sourceTree = "<absolute>"; };
 		E7F985F515E0DE99003869B5 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = /System/Library/Frameworks/Accelerate.framework; sourceTree = "<absolute>"; };
 		a316f8599b52bd931392354d /* ofxTCPPocoConnectionHandler.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 30; name = ofxTCPPocoConnectionHandler.cpp; path = ../src/ofxTCPPocoConnectionHandler.cpp; sourceTree = SOURCE_ROOT; };
-		b83aeeee684e8ea7be713da2 /* ofxTCPPocoUtils.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = ofxTCPPocoUtils.h; path = ../src/ofxTCPPocoUtils.h; sourceTree = SOURCE_ROOT; };
 		d4c025d7c94c44745828fd8a /* ofxTCPPocoConnectionHandler.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = ofxTCPPocoConnectionHandler.h; path = ../src/ofxTCPPocoConnectionHandler.h; sourceTree = SOURCE_ROOT; };
 		d64311359b996097801d7e57 /* ofxTCPPoco.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = ofxTCPPoco.h; path = ../src/ofxTCPPoco.h; sourceTree = SOURCE_ROOT; };
 		ddea43ae82a48877b3c31c74 /* ofxTCPPocoClient.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = ofxTCPPocoClient.h; path = ../src/ofxTCPPocoClient.h; sourceTree = SOURCE_ROOT; };
 		f69d8b8c47717fad23f36e33 /* ofxTCPPocoClient.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 30; name = ofxTCPPocoClient.cpp; path = ../src/ofxTCPPocoClient.cpp; sourceTree = SOURCE_ROOT; };
-		fc45d8823bb56a43c96f529a /* ofxTCPPocoUtils.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 30; name = ofxTCPPocoUtils.cpp; path = ../src/ofxTCPPocoUtils.cpp; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -229,8 +226,6 @@
 				d4c025d7c94c44745828fd8a /* ofxTCPPocoConnectionHandler.h */,
 				909060ee3a093307e829532f /* ofxTCPPocoServer.cpp */,
 				98442c7365f922174f9382a0 /* ofxTCPPocoServer.h */,
-				fc45d8823bb56a43c96f529a /* ofxTCPPocoUtils.cpp */,
-				b83aeeee684e8ea7be713da2 /* ofxTCPPocoUtils.h */,
 			);
 			name = src;
 			sourceTree = "<group>";
@@ -336,7 +331,6 @@
 				b6bfd638e67a089325c2a0ed /* ofxTCPPocoConnectionFactory.cpp in Sources */,
 				422448b48b941d5aa8339a54 /* ofxTCPPocoConnectionHandler.cpp in Sources */,
 				c1c3f09c182b061942d38fcc /* ofxTCPPocoServer.cpp in Sources */,
-				89860b7acbfb3b983e743a31 /* ofxTCPPocoUtils.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -2,8 +2,9 @@
 
 /*
  ofxTCPPocoClient client example.
- - client sends a request or ping
- - receives a reply or ack
+ - client receives messages from server
+ - client sends a message on key press
+ - default message framing protocol- ? (send header with size (4 bytes) followed by message)
  */
 
 //--------------------------------------------------------------
@@ -14,28 +15,27 @@ void ofApp::setup(){
     // client
     int port = 12345;
     string ip = "localhost";
-    client.setup(ip, port);
+    client.connect(ip, port);
+    
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
 
+    while(client.hasWaitingMessage()) {
+        string replyMessage;
+        client.getMessage(replyMessage);
+        receivedMessages.push_back( replyMessage);
+    }
 
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
 
-    // draw the image we received
     ofSetColor(255);
+    ofDrawCircle(ofGetMouseX(), ofGetMouseY(), 20);
     
-    ofPushMatrix();
-    ofPushStyle();
-    ofTranslate(ofGetWidth()*.5, ofGetHeight()*.5);
-    ofRotateZ(sin(ofGetElapsedTimef()) * 360);
-    ofRect(-50, -50, 100, 100);
-    ofPopStyle();
-    ofPopMatrix();
     
     // display sent messages
     stringstream sendOutput;
@@ -55,11 +55,14 @@ void ofApp::draw(){
     ofSetColor(0);
     ofDrawBitmapString(receiveOutput.str(), ofGetWidth()*.5, 80);
     
+    
+    
     // info
     stringstream output;
     output << "ofxTCPPocoClient." << endl;
     output << "Press a key to send a message" << endl;
-    output << "Connected to server: " << client.connected;
+    output << "Connected to server: " << client.connected << endl;
+    output << "Fps: " << ofGetFrameRate();
     ofDrawBitmapStringHighlight(output.str(), 20, 20);
 
 }
@@ -67,31 +70,27 @@ void ofApp::draw(){
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
 
-    // send message
-    string message = "Hello from client pressed:" + ofToString(key);
-    bool sentRequest = client.sendMessage(message);
-    
-    if(sentRequest) {
-        sentMessages.push_back(message);
-        
-        // once a message is sent, read the reply from server (blocking)
-        string replyMessage;
-        bool receivedReply = client.receiveMessage(replyMessage, TCPPOCO_DEFAULT_MSG_SIZE); // blocking/waiting
-        if(receivedReply) {
-            receivedMessages.push_back( replyMessage);
-        } else {
-            ofLog() << "failed to receive reply";
-        }
-        
-    } else {
-        
-        ofLog() << "failed to send request";
-    }
+
 }
 
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key){
+    
+//    if(key == '1') {
+//        client.disconnect();
+//        return;
+//    } else if(key == '2') {
+//        client.shutdown();
+//        return;
+//    }
 
+    // send message
+    string message = "Hello from client " + ofToString(sentMessages.size());
+    bool sentRequest = client.sendMessage(message);
+    
+    if(sentRequest) {
+        sentMessages.push_back(message);
+    }
 }
 
 //--------------------------------------------------------------

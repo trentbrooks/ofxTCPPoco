@@ -7,10 +7,8 @@
 #include "Poco/Net/TCPServerConnectionFactory.h"
 #include "Poco/Net/TCPServerConnection.h"
 #include "Poco/Net/Socket.h"
-#include "ofxTCPPocoUtils.h"
 #include "ofxTCPPocoConnectionFactory.h"
 
-// TODO: crash on client exit
 
 class ofxTCPPocoServer {
 public:
@@ -18,35 +16,34 @@ public:
     ofxTCPPocoServer();
     virtual ~ofxTCPPocoServer();
     
-    void setup(int port = 12345);
+    void start(int port = 12345);
 
     // receive requests from clients
-    bool hasWaitingRequest(int clientId);
+    bool hasWaitingMessage(int clientId);
     void setReceiveSize(int clientId, int size);
-    bool receiveMessage(int clientId, string& msg);
-    bool receiveRawBuffer(int clientId, ofBuffer& buffer);
+    bool getMessage(int clientId, string& msg);
+    bool getRawBuffer(int clientId, ofBuffer& buffer);
     
     // send
+    bool sendMessageToAll(string msg);
+    bool sendRawBufferToAll(ofBuffer& buffer);
+    bool sendRawBufferToAll(const char* buffer, int size);
     bool sendMessage(int clientId, string msg);
     bool sendRawBuffer(int clientId, ofBuffer& buffer);
-    
+    bool sendRawBuffer(int clientId, const char* buffer, int size);
     
     // server automatically pulls data from clients with ofxTCPPocoConnectionHandler run loop
     // no need to thread
     int getNumClients();
     
-    //bool hasWaitingMessage(int clientId);
-    //void getMessage(int clientId, string& msg);
-    //void getRawBuffer(int clientId, ofBuffer& buffer);
-    
     void printServerInfo();
-
+    
+    void disconnect();
     
 protected:
     
     int port;
     
-    // poco
     Poco::Net::ServerSocket* serverSocket;
     Poco::Net::TCPServer* server;
     ofxTCPPocoConnectionFactory* connection;
